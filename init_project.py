@@ -1,0 +1,497 @@
+#!/usr/bin/env python
+"""
+Comprehensive setup script for GuardRail PII Scrambler.
+This script:
+1. Creates the templates directory
+2. Generates the index.html file
+3. Verifies all necessary files exist
+"""
+
+import os
+import sys
+from pathlib import Path
+
+HTML_CONTENT = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GuardRail PII Scrambler</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #334155;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 1.1em;
+            font-weight: 300;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .section {
+            flex: 1;
+            min-width: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #60a5fa;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #334155;
+        }
+
+        textarea {
+            flex: 1;
+            padding: 20px;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            line-height: 1.6;
+            resize: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            min-height: 500px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.3);
+        }
+
+        textarea:read-only {
+            background-color: #1e293b;
+            cursor: not-allowed;
+            opacity: 0.9;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 40px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-scramble {
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            color: white;
+            padding: 12px 50px;
+        }
+
+        .btn-scramble:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-scramble:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-scramble:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-copy {
+            background-color: #475569;
+            color: white;
+            padding: 10px 25px;
+            font-size: 0.9em;
+        }
+
+        .btn-copy:hover:not(:disabled) {
+            background-color: #64748b;
+            transform: translateY(-2px);
+        }
+
+        .btn-clear {
+            background-color: #7f1d1d;
+            color: white;
+            padding: 10px 25px;
+            font-size: 0.9em;
+        }
+
+        .btn-clear:hover:not(:disabled) {
+            background-color: #991b1b;
+            transform: translateY(-2px);
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+            font-weight: 600;
+            animation: slideDown 0.3s ease;
+        }
+
+        .status.show {
+            display: block;
+        }
+
+        .status.success {
+            background-color: #064e3b;
+            color: #86efac;
+            border: 1px solid #10b981;
+        }
+
+        .status.error {
+            background-color: #7f1d1d;
+            color: #fca5a5;
+            border: 1px solid #ef4444;
+        }
+
+        .status.loading {
+            background-color: #1e3a8a;
+            color: #93c5fd;
+            border: 1px solid #3b82f6;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #60a5fa;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .info-box {
+            background-color: #1e293b;
+            border-left: 4px solid #60a5fa;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .info-box h3 {
+            color: #60a5fa;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #cbd5e1;
+        }
+
+        .info-box li {
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .section {
+                min-width: 100%;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            textarea {
+                min-height: 400px;
+            }
+
+            h1 {
+                font-size: 1.6em;
+            }
+
+            .main-content {
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ GuardRail PII Scrambler</h1>
+            <p class="subtitle">Offline Medical Data Masking Tool</p>
+        </header>
+
+        <div class="info-box">
+            <h3>How It Works</h3>
+            <ul>
+                <li><strong>Regex Matching:</strong> Replaces emails, SA phone numbers, IDs, medical aid numbers, and ICD-10 codes</li>
+                <li><strong>NLP Processing:</strong> Detects and masks person names, locations, and organization names</li>
+                <li><strong>100% Offline:</strong> No data leaves your machine. Processing happens locally.</li>
+                <li><strong>Structure Preserved:</strong> JSON, SQL, and text formatting remains intact</li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <div class="section">
+                <h2 class="section-title">Input Data</h2>
+                <textarea id="inputText" placeholder="Paste your sensitive medical data here...
+Example:
+Patient: John Smith, ID: 9201015800123
+Email: john.smith@example.com
+Phone: 082 555 1234
+Medical Aid: MED12345678
+Diagnosis: Type 2 Diabetes (E11.9)"></textarea>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Masked Output</h2>
+                <textarea id="outputText" readonly placeholder="Scrambled data will appear here..."></textarea>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn-scramble" id="scrambleBtn">🔐 Scramble Data</button>
+            <button class="btn-copy" id="copyBtn" disabled>📋 Copy Output</button>
+            <button class="btn-clear" id="clearBtn">🗑️ Clear All</button>
+        </div>
+
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        const inputText = document.getElementById('inputText');
+        const outputText = document.getElementById('outputText');
+        const scrambleBtn = document.getElementById('scrambleBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const status = document.getElementById('status');
+
+        scrambleBtn.addEventListener('click', scrambleData);
+        copyBtn.addEventListener('click', copyToClipboard);
+        clearBtn.addEventListener('click', clearAll);
+
+        // Enable copy button only when there's output
+        outputText.addEventListener('input', () => {
+            copyBtn.disabled = !outputText.value.trim();
+        });
+
+        async function scrambleData() {
+            const text = inputText.value.trim();
+            
+            if (!text) {
+                showStatus('Please enter some data to scramble.', 'error');
+                return;
+            }
+
+            scrambleBtn.disabled = true;
+            copyBtn.disabled = true;
+            showStatus('<span class="spinner"></span>Processing your data...', 'loading');
+
+            try {
+                const response = await fetch('/scramble', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Server error');
+                }
+
+                const data = await response.json();
+                outputText.value = data.output;
+                showStatus('✓ Data successfully scrambled!', 'success');
+                copyBtn.disabled = false;
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                scrambleBtn.disabled = false;
+            }
+        }
+
+        function copyToClipboard() {
+            if (!outputText.value.trim()) {
+                showStatus('Nothing to copy.', 'error');
+                return;
+            }
+
+            outputText.select();
+            document.execCommand('copy');
+            showStatus('✓ Copied to clipboard!', 'success');
+            
+            // Reset button text
+            const originalText = copyBtn.textContent;
+            setTimeout(() => {
+                showStatus('', '');
+            }, 2000);
+        }
+
+        function clearAll() {
+            inputText.value = '';
+            outputText.value = '';
+            copyBtn.disabled = true;
+            status.textContent = '';
+            status.classList.remove('show');
+            inputText.focus();
+        }
+
+        function showStatus(message, type) {
+            status.innerHTML = message;
+            status.className = `status show ${type}`;
+            
+            // Auto-hide success/error messages after 4 seconds
+            if (type === 'success' || type === 'error') {
+                setTimeout(() => {
+                    status.classList.remove('show');
+                }, 4000);
+            }
+        }
+
+        // Focus on input on load
+        window.addEventListener('load', () => {
+            inputText.focus();
+        });
+    </script>
+</body>
+</html>
+'''
+
+def main():
+    """Main setup function."""
+    project_root = Path(__file__).parent
+    
+    print("🚀 Setting up GuardRail PII Scrambler...\n")
+    
+    # Create templates directory
+    templates_dir = project_root / 'templates'
+    templates_dir.mkdir(exist_ok=True)
+    print(f"✓ Created templates directory")
+    
+    # Create index.html
+    html_file = templates_dir / 'index.html'
+    with open(html_file, 'w', encoding='utf-8') as f:
+        f.write(HTML_CONTENT)
+    print(f"✓ Created templates/index.html")
+    
+    # Create static directory
+    static_dir = project_root / 'static'
+    static_dir.mkdir(exist_ok=True)
+    print(f"✓ Created static directory")
+    
+    # Verify required files
+    required_files = ['app.py', 'requirements.txt']
+    print("\n✅ Verification:")
+    for file in required_files:
+        if (project_root / file).exists():
+            print(f"✓ Found {file}")
+        else:
+            print(f"⚠ Missing {file}")
+    
+    print("\n✅ Setup complete!")
+    print("\n📋 Next steps:")
+    print("1. Install dependencies:")
+    print("   pip install -r requirements.txt")
+    print("\n2. Download spaCy model:")
+    print("   python -m spacy download en_core_web_sm")
+    print("\n3. Start the Flask server:")
+    print("   python app.py")
+    print("\n4. Open in your browser:")
+    print("   http://localhost:5000")
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as e:
+        print(f"❌ Setup failed: {e}")
+        sys.exit(1)
