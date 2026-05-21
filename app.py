@@ -6,7 +6,7 @@ from faker import Faker
 import spacy
 
 app = Flask(__name__)
-fake = Faker('en_ZA')
+fake = Faker('en_US')
 
 # Load spaCy model
 nlp = spacy.load('en_core_web_sm')
@@ -78,7 +78,8 @@ def scramble_sa_id(text):
 
 def scramble_medical_aid(text):
     """Replace medical aid numbers with random ones"""
-    med_aid_pattern = r'\b(?:MED[0-9]{5,8}|[A-Z0-9]{7,9})\b'
+    # Only match explicit MED + digits format, not random uppercase sequences
+    med_aid_pattern = r'\bMED[0-9]{6,10}\b'
     text = re.sub(med_aid_pattern, lambda m: generate_medical_aid(), text, flags=re.IGNORECASE)
     return text
 
